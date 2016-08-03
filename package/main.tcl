@@ -47,29 +47,13 @@ namespace eval ::jira {
 	proc loginBasic {username password} {
 		set url "[::jira::baseurl]/rest/auth/1/session"
 
-		puts "URL: $url"
-
-		set token [::http::geturl $url -headers [::jira::headers $username $password]]
-		::http::wait $token
-
-		if {[::http::ncode $token] != 200} {
-			::http::cleanup $token
+		set success [::jira::raw $url authresult]
+		if {[string is true -strict $success]} {
+			::jira::config -cookie [dict get $authresult(meta) Set-Cookie]
+			return 1
+		} else {
 			return 0
 		}
-
-		::jira::config -cookie [dict get [::http::meta $token] Set-Cookie]
-
-		foreach k {data error status code ncode size meta} {
-			puts $k
-			puts [::http::$k $token]
-			puts "-- "
-		}
-
-		::http::cleanup $token
-
-		puts "all done with login"
-
-		return
 	}
 
 	proc login {args} {
@@ -105,6 +89,12 @@ namespace eval ::jira {
 
 		foreach k {data error status code ncode size meta} {
 			set result($k) [::http::$k $token]
+
+			if {0} {
+				puts $k
+				puts [::http::$k $token]
+				puts "-- "
+			}
 		}
 
 		::http::cleanup $token
