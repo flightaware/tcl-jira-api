@@ -85,7 +85,7 @@ namespace eval ::jira {
 
 	proc config {args} {
 		::jira::parse_args args argarray
-		parray argarray
+		#parray argarray
 
 		array set ::jira::config [array get argarray]
 
@@ -126,7 +126,7 @@ namespace eval ::jira {
 
 		if {[::jira::raw $url json]} {
 			array set result [::yajl::json2dict $json(data)]
-			parray result
+			# parray result
 			return 1
 		} else {
 			return 0
