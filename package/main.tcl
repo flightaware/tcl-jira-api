@@ -92,17 +92,23 @@ namespace eval ::jira {
 		return 1
 	}
 
-	proc raw {url _result} {
+	proc raw {url _result args} {
+		::jira::parse_args args argarray
+
 		upvar 1 $_result result
 		unset -nocomplain result
 
-		set token [::http::geturl $url -headers [::jira::authheaders]]
+		if {[info exists argarray(post)]} {
+			set token [::http::geturl $url -headers [::jira::authheaders] -query $argarray(post)]
+		} else {
+			set token [::http::geturl $url -headers [::jira::authheaders]]
+		}
 		::http::wait $token
 
 		foreach k {data error status code ncode size meta} {
 			set result($k) [::http::$k $token]
 
-			if {0} {
+			if {[info exists ::jira::config(debug)] || [info exists argarray(debug)]} {
 				puts $k
 				puts [::http::$k $token]
 				puts "-- "
@@ -118,11 +124,18 @@ namespace eval ::jira {
 		return 1
 	}
 
-	proc getIssue {number _result} {
+	proc getIssue {number _result args} {
+		::jira::parse_args args argarray
 		upvar 1 $_result result
 		unset -nocomplain result
 
 		set url "[::jira::baseurl]/rest/api/2/issue/$number"
+
+		if {[info exists argarray(getcomments)]} {
+			append url "/comment"
+		}
+
+		puts "URL $url"
 
 		if {[::jira::raw $url json]} {
 			array set result [::yajl::json2dict $json(data)]
@@ -131,6 +144,63 @@ namespace eval ::jira {
 		} else {
 			return 0
 		}
+	}
+
+	proc getRoles {_result} {
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set url "[::jira::baseurl]/rest/api/2/applicationrole"
+
+		if {[::jira::raw $url json]} {
+			array set result [::yajl::json2dict $json(data)]
+			# parray result
+			return 1
+		} else {
+			return 0
+		}
+	}
+
+	proc addComment {number _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set url "[::jira::baseurl]/rest/api/2/issue/$number/comment"
+
+		set postdata [::yajl create #auto]
+		$postdata map_open string body string $argarray(body)
+		# $postdata string visibility map_open string type string role string value string developers map_close
+
+		$postdata string author map_open
+		$postdata string self string "https://flightaware.atlassian.net/rest/api/2/user?username=sherron.racz%40flightaware.com"
+		$postdata string name string "sherron.racz@flightaware.com"
+		$postdata string displayName string "Sherron Racz"
+		$postdata string active bool true
+
+		#$postdata string self string "https://flightaware.atlassian.net/rest/api/2/user?username=nugget%40flightaware.com"
+		#$postdata string name string "nugget@flightaware.com"
+		#$postdata string displayName string "David McNett"
+		#$postdata string active bool true
+
+		$postdata map_close
+
+		$postdata map_close
+		set jsonpost [$postdata get]
+		$postdata delete
+
+		if {[info exists ::jira::config(debug)] || [info exists argarray(debug)]} {
+			puts "POST $jsonpost"
+		}
+
+		if {[::jira::raw $url json -post $jsonpost]} {
+			array set result [::yajl::json2dict $json(data)]
+			# parray result
+			return 1
+		} else {
+			return 0
+		}
+
 	}
 
 	proc savecookies {{filename ""}} {
