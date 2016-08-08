@@ -161,6 +161,23 @@ namespace eval ::jira {
 		}
 	}
 
+	proc getItemID {type name {field "name"}} {
+		set url "[::jira::baseurl]/rest/api/2/$type"
+
+		if {[::jira::raw $url json]} {
+			foreach el [::yajl::json2dict $json(data)] {
+				unset -nocomplain item
+				array set item $el
+				#parray item
+				#puts "-- "
+				if {[string tolower $name] eq [string tolower $item($field)]} {
+					return $item(id)
+				}
+			}
+		}
+		return
+	}
+
 	proc addComment {number _result args} {
 		::jira::parse_args args argarray
 		upvar 1 $_result result
