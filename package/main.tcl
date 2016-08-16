@@ -117,11 +117,41 @@ namespace eval ::jira {
 
 		::http::cleanup $token
 
-		if {[info exists result(ncode)] && $result(ncode) != 200} {
+		if {[info exists result(ncode)] && $result(ncode) >= 200 && $result(ncode) <= 299} {
+			return 1
+		}
+
+		return 0
+	}
+
+	proc getIssueTypes {_result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set url "[::jira::baseurl]/rest/api/2/issue/createmeta"
+
+		if {[::jira::raw $url json]} {
+			array set rawresult [::yajl::json2dict $json(data)]
+			foreach p $rawresult(projects) {
+				unset -nocomplain project
+				array set project $p
+				if {![info exists argarray(key)] || $argarray(key) eq $project(key)} {
+					# parray project
+					foreach i $project(issuetypes) {
+						unset -nocomplain it
+						array set it $i
+						set result($it(id)) $i
+					}
+				}
+			}
+
+			# parray result
+			return 1
+		} else {
 			return 0
 		}
 
-		return 1
 	}
 
 	proc getIssue {number _result args} {
@@ -177,6 +207,42 @@ namespace eval ::jira {
 		}
 		return
 	}
+
+	proc addIssue {_issue _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_issue issue
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set url "[::jira::baseurl]/rest/api/2/issue"
+
+		set postdata [::yajl create #auto]
+
+		$postdata map_open
+		$postdata string fields map_open
+
+		$postdata string project map_open string id string $issue(projectID) map_close
+		$postdata string summary string $issue(summary)
+		$postdata string issuetype map_open string id string $issue(issueType) map_close
+
+		$postdata map_close
+		$postdata map_close
+
+		set jsonpost [$postdata get]
+		$postdata delete
+
+		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
+			puts "POST $jsonpost"
+		}
+
+		if {[::jira::raw $url json -post $jsonpost]} {
+			array set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	}
+
 
 	proc addComment {number _result args} {
 		::jira::parse_args args argarray
