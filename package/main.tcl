@@ -208,20 +208,27 @@ namespace eval ::jira {
 		return
 	}
 
-	proc issueRegexp {} {
-		set url "[::jira::baseurl]/rest/api/2/project"
+	proc issueRegexp {args} {
+		::jira::parse_args args argarray
 
-		set keylist [list]
+		if {[info exists argarray(force)] || ![info exists ::jira::config(issueRegexp)]} {
+			set url "[::jira::baseurl]/rest/api/2/project"
 
-		if {[::jira::raw $url json]} {
-			foreach el [::yajl::json2dict $json(data)] {
-				unset -nocomplain item
-				array set item $el
-				lappend keylist $item(key)
-				# parray item
+			set keylist [list]
+
+			if {[::jira::raw $url json]} {
+				foreach el [::yajl::json2dict $json(data)] {
+					unset -nocomplain item
+					array set item $el
+					lappend keylist $item(key)
+					# parray item
+				}
 			}
+			set ::jira::config(issueRegexp) "([join $keylist "|"])-\\d+"
 		}
-		return "([join $keylist "|"])-\\d+"
+
+		return $::jira::config(issueRegexp)
+
 	}
 
 	proc issueURL {issue} {
