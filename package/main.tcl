@@ -108,7 +108,7 @@ namespace eval ::jira {
 		foreach k {data error status code ncode size meta} {
 			set result($k) [::http::$k $token]
 
-			if {[info exists ::jira::config(debug)] || [info exists argarray(debug)]} {
+			if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
 				puts $k
 				puts [::http::$k $token]
 				puts "-- "
@@ -224,6 +224,15 @@ namespace eval ::jira {
 		return "([join $keylist "|"])-\\d+"
 	}
 
+	proc issueURL {issue} {
+		return "[::jira::baseurl]/browse/${issue}"
+	}
+
+	proc addIssueLinks {buf} {
+		regsub -all [::jira::issueRegexp] $buf "<a href=\"[::jira::issueURL \\0]\">\\0</a>" retbuf
+		return $retbuf
+	}
+
 	proc addIssue {_issue _result args} {
 		::jira::parse_args args argarray
 		upvar 1 $_issue issue
@@ -288,7 +297,7 @@ namespace eval ::jira {
 		set jsonpost [$postdata get]
 		$postdata delete
 
-		if {[info exists ::jira::config(debug)] || [info exists argarray(debug)]} {
+		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
 			puts "POST $jsonpost"
 		}
 
