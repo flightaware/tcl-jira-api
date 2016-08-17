@@ -241,9 +241,15 @@ namespace eval ::jira {
 			set argarray(format) html
 		}
 
+		if {[info exists argarray(class)]} {
+			set class "class=\"$argarray(class)\""
+		} else {
+			set class ""
+		}
+
 		switch $argarray(format) {
 			html {
-				regsub -all [::jira::issueRegexp] $buf "<a href=\"[::jira::issueURL \\0]\">\\0</a>" retbuf
+				regsub -all [::jira::issueRegexp] $buf "<a href=\"[::jira::issueURL \\0]\" $class>\\0</a>" retbuf
 			}
 
 			markdown {
