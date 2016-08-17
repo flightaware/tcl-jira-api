@@ -17,7 +17,7 @@ TCLSH?=		tclsh
 
 all:
 
-install:	install-package install-git-hook
+install:	install-package 
 
 uninstall:	uninstall-package
 
@@ -27,10 +27,9 @@ pkgIndex:
 
 install-package: pkgIndex
 	@echo Installing $(PACKAGE) to $(TARGET)
-	@cd package
 	@install -o $(UID) -g $(GID) -m 0755 -d $(TARGET)
 	@echo "  Copying package Tcl files"
-	@install -o $(UID) -g $(GID) -m 0644 *.tcl $(TARGET)
+	@install -o $(UID) -g $(GID) -m 0644 package/*.tcl $(TARGET)
 	@sed -i '' -e's/tclsh.\../$(TCLSH)/' $(TARGET)/*
 	@echo "Installation complete"
 
