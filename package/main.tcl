@@ -235,8 +235,25 @@ namespace eval ::jira {
 		return "[::jira::baseurl]/browse/${issue}"
 	}
 
-	proc addIssueLinks {buf} {
-		regsub -all [::jira::issueRegexp] $buf "<a href=\"[::jira::issueURL \\0]\">\\0</a>" retbuf
+	proc addIssueLinks {buf args} {
+		::jira::parse_args args argarray
+		if {![info exists argarray(format)]} {
+			set argarray(format) html
+		}
+
+		switch $argarray(format) {
+			html {
+				regsub -all [::jira::issueRegexp] $buf "<a href=\"[::jira::issueURL \\0]\">\\0</a>" retbuf
+			}
+
+			markdown {
+				regsub -all [::jira::issueRegexp] $buf "\[\\0\]([::jira::issueURL \\0])" retbuf
+			}
+
+			default {
+				set retbuf $buf
+			}
+		}
 		return $retbuf
 	}
 
