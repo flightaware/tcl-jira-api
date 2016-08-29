@@ -191,6 +191,55 @@ namespace eval ::jira {
 		}
 	}
 
+	proc getTransitions {issueID _result} {
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set url "[::jira::baseurl]/rest/api/2/issue/$issueID/transitions"
+
+		if {[::jira::raw $url json]} {
+			array set result [::yajl::json2dict $json(data)]
+			# parray result
+			return 1
+		} else {
+			return 0
+		}
+	}
+
+	proc doTransition {issueID transition _result args} {
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		::jira::getTransitions $issueID validTransitionList
+
+		foreach tList $validTransitionList(transitions) {
+			unset -nocomplain pt
+			array set pt $tList
+
+			if {$pt(name) eq $transition || $pt(id) == $transition} {
+				set transitionID $pt(id)
+			}
+		}
+
+		if {[info exists transitionID]} {
+			set url "[::jira::baseurl]/rest/api/2/issue/$issueID/transitions"
+
+			set postdata [::yajl create #auto]
+			$postdata map_open string body string $argarray(body)
+			# $postdata string visibility map_open string type string role string value string developers map_close
+
+			$postdata string author map_open
+
+			if {[::jira::raw $url json]} {
+				array set result [::yajl::json2dict $json(data)]
+				# parray result
+				return 1
+			} else {
+				return 0
+			}
+		}
+	}
+
 	proc getItemID {type name {field "name"}} {
 		set url "[::jira::baseurl]/rest/api/2/$type"
 
