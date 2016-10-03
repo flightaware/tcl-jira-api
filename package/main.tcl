@@ -326,7 +326,11 @@ namespace eval ::jira {
 		$postdata string fields map_open
 
 		$postdata string project map_open string id string $issue(projectID) map_close
-		$postdata string summary string $issue(summary)
+		foreach item {summary description} {
+			if {[info exists issue($item)] && $issue($item) ne ""} {
+				$postdata string $item string $issue($item)
+			}
+		}
 		$postdata string issuetype map_open string id string $issue(issueType) map_close
 
 		$postdata map_close
