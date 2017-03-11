@@ -31,12 +31,8 @@ namespace eval ::jira {
 	proc authheaders {} {
 		unset -nocomplain headerlist
 
-		if {[info exists ::jira::config(cookies)] && $::jira::config(cookies) ne ""} {
-			lappend headerlist "Cookie" [join $::jira::config(cookies) ";"]
-		} else {
-			set auth "Basic [::base64::encode ${::jira::config(username)}:${::jira::config(password)}]"
-			lappend headerlist "Authorization" $auth
-		}
+		set auth "Basic [::base64::encode ${::jira::config(username)}:${::jira::config(password)}]"
+		lappend headerlist "Authorization" $auth
 
 		lappend headerlist "Content-Type" "application/json"
 
@@ -45,42 +41,6 @@ namespace eval ::jira {
 
 	proc baseurl {} {
 		set url "https://$::jira::config(server)"
-	}
-
-	proc findsession {meta} {
-		unset -nocomplain ::jira::config(cookies)
-
-		foreach {key value} $meta {
-			if {$key eq "Set-Cookie"} {
-				if {[regexp {([^=]+)=([^;]+);} $value _ cname cvalue]} {
-					if {$cvalue ne "" && $cvalue ne {""}} {
-						lappend ::jira::config(cookies) "$cname=$cvalue"
-					}
-				}
-			}
-		}
-		return
-	}
-
-	proc loginBasic {username password} {
-		set url "[::jira::baseurl]/rest/auth/1/session"
-
-		set success [::jira::raw $url authresult]
-		if {[string is true -strict $success]} {
-			::jira::findsession $authresult(meta)
-			return 1
-		} else {
-			return 0
-		}
-	}
-
-	proc login {args} {
-		::jira::parse_args args argarray
-
-		set username $::jira::config(username)
-		set password $::jira::config(password)
-
-		::jira::loginBasic $username $password
 	}
 
 	proc config {args} {
@@ -392,32 +352,6 @@ namespace eval ::jira {
 			return 0
 		}
 
-	}
-
-	proc savecookies {{filename ""}} {
-		if {![info exists ::jira::config(cookies)]} {
-			return 0
-		}
-		if {$filename eq ""} {
-			set filename [file join $::env(HOME) ".jiraauth"]
-		}
-		set fh [open $filename "w"]
-		puts $fh $::jira::config(cookies)
-		close $fh
-		return 1
-	}
-
-	proc loadcookies {{filename ""}} {
-		if {$filename eq ""} {
-			set filename [file join $::env(HOME) ".jiraauth"]
-		}
-		if {![file exists $filename]} {
-			return 0
-		}
-		set fh [open $filename "r"]
-		gets $fh ::jira::config(cookies)
-		close $fh
-		return 1
 	}
 }
 

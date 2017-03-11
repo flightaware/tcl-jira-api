@@ -10,18 +10,11 @@ Requirements
 * A [JIRA](https://atlassian.com/JIRA) server or JIRA Cloud instance
 * Tcl 8.5 or newer
 
-Other Stuff that's Included
----------------------------
-
-* jira-git-hook is a script which will do awesome things once it exists
-
 In Brief
 --------
 
 The package can authenticate to the JIRA server using Basic auth (where the
-encoded username and password are supplied with every call) or by
-authenticating and receiving a cookie which is associated with a specific user
-session. 
+encoded username and password are supplied with every call).
 
 
 Example Code
@@ -33,13 +26,7 @@ Example Code
     package require jira
 
 	::jira::config -server example.atlassian.net
-
-	if {![::jira::loadcookies]} {
-		::jira::config -username "username" -password "password"
-		if {[::jira::login]} {
-			::jira::savecookies
-		}
-	}
+	::jira::config -username "username" -password "password"
 
 	::jira::config -debug 1
 
