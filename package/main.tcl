@@ -8,7 +8,17 @@ package require base64
 
 namespace eval ::jira {
 	variable config
+	
+	##############################################################################
+	# BEGIN UTILITY PROCS
+	##############################################################################
 
+	#
+	# Parse a string of the format "-key val [etc]" into an array
+	# ie "-myKey myVal -foo bar" becomes:
+	#	argarray(myKey)	= myVal
+	#	argarray(foo)	= bar
+	#
 	proc parse_args {_args _argarray} {
 		upvar 1 $_args args
 		upvar 1 $_argarray argarray
@@ -28,6 +38,10 @@ namespace eval ::jira {
 		return
 	}
 
+	#
+	# Using the configured login credentials, generate HTTP Basic auth headers in
+	# list form, suitable for passing to ::http::geturl
+	#
 	proc authheaders {} {
 		unset -nocomplain headerlist
 
@@ -39,10 +53,17 @@ namespace eval ::jira {
 		return $headerlist
 	}
 
+	#
+	# Generate the full base URL using the configured server name
+	#
 	proc baseurl {} {
 		set url "https://$::jira::config(server)"
 	}
 
+	#
+	# Set config values. Pass an arbitrary # of "-key val" arg pairs
+	# eg ::jira::config -username myuser -password correcthorsebatterystaple
+	#
 	proc config {args} {
 		::jira::parse_args args argarray
 		#parray argarray
@@ -51,7 +72,11 @@ namespace eval ::jira {
 
 		return 1
 	}
-
+	
+	#
+	# Execute an API request. Return 1 or 0 to signify request success, and set
+	# request metadata to the _result var
+	#
 	proc raw {url {method GET} _result args} {
 		::jira::parse_args args argarray
 
@@ -86,7 +111,27 @@ namespace eval ::jira {
 
 		return 0
 	}
+	
+	##############################################################################
+	# END UTILITY PROCS
+	##############################################################################
+	
+	
+	
+	##############################################################################
+	# BEGIN BASIC API PROCS
+	#
+	# These procs roughly map 1:1 with API methods
+	##############################################################################
 
+	#
+	# Given a project key (eg "JIRA"), get all known issue types for that project
+	# and store them in _result.
+	#
+	# ex ::jira::getIssueTypes issues -key "JIRA"
+	#
+	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-getCreateIssueMeta
+	#
 	proc getIssueTypes {_result args} {
 		::jira::parse_args args argarray
 		upvar 1 $_result result
@@ -117,6 +162,12 @@ namespace eval ::jira {
 
 	}
 
+	#
+	# Given an issue identifier (eg "JIRA-123"), get issue data and store in _result
+	# Optionally append -getcomments 1 to return comments with issue data.
+	#
+	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-getIssue
+	#
 	proc getIssue {number _result args} {
 		::jira::parse_args args argarray
 		upvar 1 $_result result
@@ -139,6 +190,11 @@ namespace eval ::jira {
 		}
 	}
 
+	#
+	# Get all application roles.
+	#
+	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/applicationrole
+	#
 	proc getRoles {_result} {
 		upvar 1 $_result result
 		unset -nocomplain result
@@ -153,7 +209,13 @@ namespace eval ::jira {
 			return 0
 		}
 	}
-
+	
+	#
+	# Given an issue identifier (eg "JIRA-123"), get all transitions available to
+	# the issue and store in _result.
+	#
+	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-getTransitions
+	#
 	proc getTransitions {issueID _result} {
 		upvar 1 $_result result
 		unset -nocomplain result
@@ -169,6 +231,13 @@ namespace eval ::jira {
 		}
 	}
 
+	#
+	# Given an issue identifier (eg "JIRA-123"), perform the specified transition
+	# on the issue. The transition can be specified either by ID or name. Any data
+	# returned from the API endpoint is stored in _result.
+	#
+	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-doTransition
+	#
 	proc doTransition {issueID transition _result} {
 		upvar 1 $_result result
 		unset -nocomplain result
@@ -204,9 +273,16 @@ namespace eval ::jira {
 			} else {
 				return 0
 			}
+		} else {
+			return 0
 		}
 	}
 
+	#
+	# Multipurpose proc for any API GET method that returns something with an ID.
+	# For example, get a project's ID with [::jira::getItemID project "WEB" "key"]
+	# Returns the relevant ID or an empty string if something went wrong.
+	#
 	proc getItemID {type name {field "name"}} {
 		set url "[::jira::baseurl]/rest/api/2/$type"
 
@@ -223,62 +299,21 @@ namespace eval ::jira {
 		}
 		return
 	}
-
-	proc issueRegexp {args} {
-		::jira::parse_args args argarray
-
-		if {[info exists argarray(force)] || ![info exists ::jira::config(issueRegexp)]} {
-			set url "[::jira::baseurl]/rest/api/2/project"
-
-			set keylist [list]
-
-			if {[::jira::raw $url GET json]} {
-				foreach el [::yajl::json2dict $json(data)] {
-					unset -nocomplain item
-					array set item $el
-					lappend keylist $item(key)
-					# parray item
-				}
-			}
-			set ::jira::config(issueRegexp) "([join $keylist "|"])-\\d+"
-		}
-
-		return $::jira::config(issueRegexp)
-
-	}
-
-	proc issueURL {issue} {
-		return "[::jira::baseurl]/browse/${issue}"
-	}
-
-	proc addIssueLinks {buf args} {
-		::jira::parse_args args argarray
-		if {![info exists argarray(format)]} {
-			set argarray(format) html
-		}
-
-		if {[info exists argarray(class)]} {
-			set class "class=\"$argarray(class)\""
-		} else {
-			set class ""
-		}
-
-		switch $argarray(format) {
-			html {
-				regsub -all [::jira::issueRegexp] $buf "<a href=\"[::jira::issueURL \\0]\" $class>\\0</a>" retbuf
-			}
-
-			markdown {
-				regsub -all [::jira::issueRegexp] $buf "\[\\0\]([::jira::issueURL \\0])" retbuf
-			}
-
-			default {
-				set retbuf $buf
-			}
-		}
-		return $retbuf
-	}
-
+	
+	#
+	# Create a new issue. Issue details should be passed in the _issue array.
+	#
+	# Required issue fields:
+	#	issue(projectID) The key of the project this issue goes in, eg "JIRA:"
+	#	issue(issueType) The ID of the issueType to be assigned. See getIssueTypes
+	#
+	# Other fields may be provided as desired. Array keys should match the field
+	# names from JIRA. Examples:
+	#	issue(summary) "Hello World!"
+	#	issue(description "I'd like to thank the Academy, my parents, blah blah blah"
+	#
+	# Any data returned by the request will be stored in _result
+	#
 	proc addIssue {_issue _result args} {
 		::jira::parse_args args argarray
 		upvar 1 $_issue issue
@@ -318,7 +353,11 @@ namespace eval ::jira {
 		}
 	}
 
-
+	#
+	# Add a comment to the issue specified by number (eg JIRA-123). The body of
+	# the comment should be passed with args, eg -body "This is my comment". Any
+	# data returned by the request will be stored in _result
+	#
 	proc addComment {number _result args} {
 		::jira::parse_args args argarray
 		upvar 1 $_result result
@@ -360,6 +399,93 @@ namespace eval ::jira {
 		}
 
 	}
+	
+	##############################################################################
+	# END BASIC API PROCS
+	##############################################################################
+	
+	
+	
+	##############################################################################
+	# BEGIN MISC PROCS
+	#
+	# These procs do miscellaneous advanced/fancy stuff, generally wrapping the
+	# basic API procs above.
+	##############################################################################
+
+	#
+	# Construct a regex suitable for searching arbitrary content for apparent JIRA
+	# issue identifiers. Issue regex may be manually set using ::jira::config; in
+	# that case, the configured regex will be returned unless -force is used. When
+	# -force is used or config(issueRegexp) isn't set, all known project keys will
+	# be queried and used to construct a regex of the form (KEY1|KEY2|...)-\d+
+	#
+	proc issueRegexp {args} {
+		::jira::parse_args args argarray
+
+		if {[info exists argarray(force)] || ![info exists ::jira::config(issueRegexp)]} {
+			set url "[::jira::baseurl]/rest/api/2/project"
+
+			set keylist [list]
+
+			if {[::jira::raw $url GET json]} {
+				foreach el [::yajl::json2dict $json(data)] {
+					unset -nocomplain item
+					array set item $el
+					lappend keylist $item(key)
+					# parray item
+				}
+			}
+			set ::jira::config(issueRegexp) "([join $keylist "|"])-\\d+"
+		}
+
+		return $::jira::config(issueRegexp)
+
+	}
+	
+	#
+	# Convenience proc for generating the URL to an issue
+	#
+	proc issueURL {issue} {
+		return "[::jira::baseurl]/browse/${issue}"
+	}
+
+	#
+	# Given a bunch of text that might contain JIRA issue identifiers, find each
+	# apparently-legit identifier and replace it with a link to the issue. Handles
+	# both HTML and Markdown.
+	#
+	proc addIssueLinks {buf args} {
+		::jira::parse_args args argarray
+		if {![info exists argarray(format)]} {
+			set argarray(format) html
+		}
+
+		if {[info exists argarray(class)]} {
+			set class "class=\"$argarray(class)\""
+		} else {
+			set class ""
+		}
+
+		switch $argarray(format) {
+			html {
+				regsub -all [::jira::issueRegexp] $buf "<a href=\"[::jira::issueURL \\0]\" $class>\\0</a>" retbuf
+			}
+
+			markdown {
+				regsub -all [::jira::issueRegexp] $buf "\[\\0\]([::jira::issueURL \\0])" retbuf
+			}
+
+			default {
+				set retbuf $buf
+			}
+		}
+		return $retbuf
+	}
+	
+	##############################################################################
+	# END MISC PROCS
+	##############################################################################
 }
 
 package provide jira 1.0
