@@ -341,8 +341,6 @@ namespace eval ::jira {
 			append url "/comment"
 		}
 
-		puts "URL $url"
-
 		if {[::jira::raw $url GET json]} {
 			array set result [::yajl::json2dict $json(data)]
 			# parray result
@@ -490,11 +488,9 @@ namespace eval ::jira {
 			$postdata map_key update map_open
 				$postdata map_key fixVersions array_open
 					$postdata map_open
-						$postdata map_key set array_open
-							$postdata map_open
-								$postdata map_key name string $releaseName
-							$postdata map_close
-						$postdata array_close
+						$postdata map_key add map_open
+							$postdata map_key name string $releaseName
+						$postdata map_close
 					$postdata map_close
 				$postdata array_close
 			$postdata map_close
