@@ -175,13 +175,13 @@ namespace eval ::jira {
 	# Create a new issue. Issue details should be passed in the _issue array.
 	#
 	# Required issue fields:
-	#	issue(projectID) The key of the project this issue goes in, eg "JIRA:"
-	#	issue(issueType) The ID of the issueType to be assigned. See getIssueTypes
+	#	_issue(projectID) The key of the project this issue goes in, eg "JIRA:"
+	#	_issue(issueType) The ID of the issueType to be assigned. See getIssueTypes
 	#
 	# Other fields may be provided as desired. Array keys should match the field
 	# names from JIRA. Examples:
-	#	issue(summary) "Hello World!"
-	#	issue(description "I'd like to thank the Academy, my parents, blah blah blah"
+	#	_issue(summary) "Hello World!"
+	#	_issue(description "I'd like to thank the Academy, my parents, blah blah blah"
 	#
 	# Any data returned by the request will be stored in _result
 	#
@@ -212,6 +212,59 @@ namespace eval ::jira {
 		set jsonpost [$postdata get]
 		$postdata delete
 
+		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
+			puts "POST $jsonpost"
+		}
+
+		if {[::jira::raw $url POST json -body $jsonpost]} {
+			array set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	}
+	
+	#
+	# Create a new version (aka release). Details should be passed in the _version
+	# array.
+	#
+	# Required version fields:
+	#	_version(name) Name of the version
+	#	_version(project) Key of the project this version belongs to, eg "JIRA"
+	#
+	# Other fields may be passed as required. Examples:
+	#	_version(released) 1 or 0 to set the "released" flag
+	#	_version(releaseDate) Date of actual release in YYYY-MM-DD format
+	#
+	# Any data returned by the request will be stored in _result
+	#
+	proc addVersion {_version _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_version version
+		upvar 1 $_result result
+		unset -nocomplain result
+		
+		set url "[::jira::baseurl]/rest/api/2/version"
+		
+		set postdata [::yajl create #auto]
+		
+		$postdata map_open
+			$postdata map_key name string $version(name)
+			$postdata map_key project string $version(project)
+			
+			if {[info exists version(released)]} {
+				$postdata map_key released bool $version(released)
+			}
+			
+			if {[info exists version(releaseDate)]} {
+				$postdata map_key releaseDate string $version(releaseDate)
+			}
+			
+		$postdata map_close
+		
+		set jsonpost [$postdata get]
+		$postdata delete
+		
 		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
 			puts "POST $jsonpost"
 		}
@@ -392,6 +445,65 @@ namespace eval ::jira {
 		set url "[::jira::baseurl]/rest/api/2/issue/$issueID/transitions"
 
 		if {[::jira::raw $url GET json]} {
+			array set result [::yajl::json2dict $json(data)]
+			# parray result
+			return 1
+		} else {
+			return 0
+		}
+	}
+	
+	#
+	# Get all versions (aka releases) for a project
+	#
+	proc getVersions {projectID _result} {
+		upvar 1 $_result result
+		unset -nocomplain result
+		
+		set url "[::jira::baseurl]/rest/api/2/project/${projectID}/versions"
+		if {[::jira::raw $url GET json]} {
+			set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	
+	}
+	
+
+	
+	#
+	# Tag an issue with a JIRA version. This proc assumes the specified version
+	# exists already and the issue isn't already tagged. Any data returned by the
+	# request will be stored in _result.
+	#
+	proc releaseIssue {issueID releaseName _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_result result
+		unset -nocomplain result
+		
+		set url "[::jira::baseurl]/rest/api/2/issue/$issueID"
+		
+		# Build JSON
+		set postdata [yajl create #auto]
+		$postdata map_open
+			$postdata map_key update map_open
+				$postdata map_key fixVersions array_open
+					$postdata map_open
+						$postdata map_key set array_open
+							$postdata map_open
+								$postdata map_key name string $releaseName
+							$postdata map_close
+						$postdata array_close
+					$postdata map_close
+				$postdata array_close
+			$postdata map_close
+		$postdata map_close
+
+		set jsonpost [$postdata get]
+		$postdata delete
+		
+		if {[::jira::raw $url PUT json -body $jsonpost]} {
 			array set result [::yajl::json2dict $json(data)]
 			# parray result
 			return 1
