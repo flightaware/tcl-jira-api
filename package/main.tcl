@@ -125,31 +125,25 @@ namespace eval ::jira {
 	##############################################################################
 	
 	#
-	# Add a comment to the issue specified by number (eg JIRA-123). The body of
-	# the comment should be passed with args, eg -body "This is my comment". Any
-	# data returned by the request will be stored in _result
+	# Add a comment to the issue specified by key (eg JIRA-123), also works with
+	# id. The body of the comment should be passed with args, eg -body "This is my
+	# comment". Any data returned by the request will be stored in _result
 	#
-	proc addComment {number _result args} {
+	proc addComment {key _result args} {
 		::jira::parse_args args argarray
 		upvar 1 $_result result
 		unset -nocomplain result
 
-		set url "[::jira::baseurl]/rest/api/2/issue/$number/comment"
+		set url "[::jira::baseurl]/rest/api/2/issue/$key/comment"
 
 		set postdata [::yajl create #auto]
 		$postdata map_open string body string $argarray(body)
-		# $postdata string visibility map_open string type string role string value string developers map_close
 
 		$postdata string author map_open
 		$postdata string self string "https://flightaware.atlassian.net/rest/api/2/user?username=sherron.racz%40flightaware.com"
 		$postdata string name string "sherron.racz@flightaware.com"
 		$postdata string displayName string "Sherron Racz"
 		$postdata string active bool true
-
-		#$postdata string self string "https://flightaware.atlassian.net/rest/api/2/user?username=nugget%40flightaware.com"
-		#$postdata string name string "nugget@flightaware.com"
-		#$postdata string displayName string "David McNett"
-		#$postdata string active bool true
 
 		$postdata map_close
 
