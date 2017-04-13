@@ -83,8 +83,7 @@ namespace eval ::jira {
 		unset -nocomplain result
 
 		if {[info exists argarray(userDefinition)]} {
-			array set temp $argarray(userDefinition)
-			set result [::yajl::array_to_json temp]
+			array set result $argarray(userDefinition)
 			return
 		}
 
@@ -93,10 +92,8 @@ namespace eval ::jira {
 		set keyMap [list self name displayName active]
 
 		foreach key $keyMap {
-			set JSONarray($key) $getUserResult($key)
+			set result($key) $getUserResult($key)
 		}
-
-		set result [::yajl::array_to_json JSONarray]
 
 		return
 	}
@@ -356,7 +353,12 @@ namespace eval ::jira {
 		upvar 1 $_result result
 		unset -nocomplain result
 
-		set url "[::jira::baseurl]/rest/api/2/user?username=$key"
+		if {$key == ""} {
+			set url "[::jira::baseurl]/rest/api/2/myself"
+		} else {
+			set url "[::jira::baseurl]/rest/api/2/user?username=$key"			
+		}
+
 
 		if {[::jira::raw $url GET json]} {
 			array set result [::yajl::json2dict $json(data)]
