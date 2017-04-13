@@ -37,7 +37,7 @@ namespace eval ::jira {
 
 	#
 	# Set config values. Pass an arbitrary # of "-key val" arg pairs
-	# eg ::jira::config -username myuser -password correcthorsebatterystaple
+	# eg ::jira::config -username myuser -password correcthorsebatterystaple -server notmyjira.atlassian.net
 	#
 	proc config {args} {
 		::jira::parse_args args argarray
@@ -69,6 +69,34 @@ namespace eval ::jira {
 			unset -nocomplain argarray
 			array set argarray $datalist
 		}
+
+		return
+	}
+
+	#
+	# Parse user JSON and generate basic BasicUser JSON.
+	#
+	proc parseBasicUser {key _result args} {
+		::jira::parse_args args argarray
+
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		if {[info exists argarray(userDefinition)]} {
+			array set temp $argarray(userDefinition)
+			set result [::yajl::array_to_json temp]
+			return
+		}
+
+		::jira::getUser $key getUserResult
+
+		set keyMap [list self name displayName active]
+
+		foreach key $keyMap {
+			set JSONarray($key) $getUserResult($key)
+		}
+
+		set result [::yajl::array_to_json JSONarray]
 
 		return
 	}
