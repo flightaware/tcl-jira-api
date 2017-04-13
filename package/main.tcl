@@ -161,16 +161,19 @@ namespace eval ::jira {
 
 		set url "[::jira::baseurl]/rest/api/2/issue/$key/comment"
 
+		if {[info exists argarray(author)]} {
+			::jira::parseBasicUser $argarray(userDefinition) author
+		} elseif {[info exists argarray(user)]} {
+			::jira::parseBasicUser $argarray(userName) author
+		} else {
+			::jira::parseBasicUser {} author
+		}
+
 		set postdata [::yajl create #auto]
 		$postdata map_open string body string $argarray(body)
 
-		$postdata string author map_open
-		$postdata string self string "https://flightaware.atlassian.net/rest/api/2/user?username=sherron.racz%40flightaware.com"
-		$postdata string name string "sherron.racz@flightaware.com"
-		$postdata string displayName string "Sherron Racz"
-		$postdata string active bool true
-
-		$postdata map_close
+		$postdata string author 
+		::yajl::add_array_to_json $postdata author
 
 		$postdata map_close
 		set jsonpost [$postdata get]
