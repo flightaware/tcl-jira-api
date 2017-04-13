@@ -97,6 +97,71 @@ namespace eval ::jira {
 
 		return
 	}
+	proc issue_array_to_json {_issue _result args} {
+		::jira::parse_args args argarray
+
+		upvar 1 $_issue issue
+
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set postdata [::yajl create #auto]
+		$postdata map_open string fields map_open
+
+		set basicFields [list summary environment description duedate]
+		set listFields [list labels]
+		set mapFields [list project issuetype assignee reporter priority components]
+
+		foreach field $basicFields {
+			if {[info exists issue($field)]} {
+				$postdata string $field string $issue(field)
+			}
+		}
+
+		foreach field $mapFields {
+			if {[info exists issue($field)]} {
+				if {[llength $issue($field)] != 2} {
+					$postdata string $field array_open
+				} else {
+					$postdata string $field map_open
+				}
+
+				foreach {key value} $issue($field) {
+					if {[llength $issue($field)] != 2} {
+						$postdata map_open
+					}
+
+					$postdata string $key string $value;
+					
+					if {[llength $issue($field)] != 2} {
+						$postdata map_close
+					}
+				}
+
+				if {[llength $issue($field)] != 2} {
+					$postdata array_close
+				} else {
+					$postdata map_close
+				}
+
+			}
+		}
+
+		foreach field $listFields {
+			if {[info exists issue($field)]} {
+				$postdata string $field array_open
+				foreach label $issue(labels) {
+					$postdata string $label
+				}
+				$postdata array_close
+			}
+		}
+		
+		$postdata map_close
+		set result [$postdata get]
+
+		return
+	}
 	
 	#
 	# Execute an API request. Return 1 or 0 to signify request success, and set
