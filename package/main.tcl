@@ -317,7 +317,27 @@ namespace eval ::jira {
 			return 0
 		}
 	}
-	
+
+	#
+	# Given a username (eg "fred"), get user data and store in _result
+	#
+	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/user-getUser
+	#
+	proc getUser {key _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set url "[::jira::baseurl]/rest/api/2/user?username=$key"
+
+		if {[::jira::raw $url GET json]} {
+			array set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	}
+
 	#
 	# Given an issue identifier (eg "JIRA-123"), get issue data and store in _result
 	# Optionally append -getcomments 1 to return comments with issue data.
