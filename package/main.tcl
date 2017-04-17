@@ -320,6 +320,65 @@ namespace eval ::jira {
 			return 0
 		}
 	}
+
+	#
+	# Create bulk issues. Issues should be a string list of arrays
+	# ingestible by issue_array_to_json.
+	#
+	# Example: description {There is no cow level} projectID 11003 components \
+	# {id 11034} summary {AOE II} issuetype {id 10003} project {id 11003} \
+	# customfield_10004 {} labels {Zerg Terran Wintoss} issueType 10003
+	#
+	# Required in each issue:
+	#	project   : The key of the project this issue goes in, eg "JIRA:"
+	#	issuetype : The ID of the issueType to be assigned. See getIssueTypes
+	#
+	# Any data returned by the request will be stored in _result
+	#
+	# https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-createIssues
+	#
+	proc addIssues {_issueList _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_issueList issueList
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set url "[::jira::baseurl]/rest/api/2/issue/bulk"
+
+		set postdata [::yajl create #auto]
+
+		set issuesJSON [list]
+		foreach issue $issueList {
+			array unset issueArr
+			array set issueArr $issue
+			issue_array_to_json issueArr json
+			lappend issuesJSON "$json"
+		}
+
+		$postdata map_open
+		$postdata string issueUpdates array_open
+		set jsonpost [$postdata get]
+
+		append jsonpost [join $issuesJSON ","]
+
+		$postdata clear
+		$postdata array_close
+		$postdata map_close
+		append jsonpost [$postdata get]
+
+		$postdata delete
+
+		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
+			puts "POST $jsonpost"
+		}
+
+		if {[::jira::raw $url POST json -body $jsonpost]} {
+			array set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	}
 	
 	#
 	# Create a new version (aka release). Details should be passed in the _version
