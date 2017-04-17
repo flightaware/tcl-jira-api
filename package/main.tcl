@@ -778,4 +778,3 @@ namespace eval ::jira {
 }
 
 package provide jira 1.0
-
