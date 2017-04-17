@@ -97,6 +97,10 @@ namespace eval ::jira {
 
 		return
 	}
+	#
+	# Parse issue array into JSON. Custom field processing only handle top level json key-values
+	# Example: [list project [list id 1337] labels [list 1223 1222] components [list id 5 id 10]]
+	# 
 	proc issue_array_to_json {_issue _result args} {
 		::jira::parse_args args argarray
 
@@ -114,7 +118,7 @@ namespace eval ::jira {
 
 		foreach field $basicFields {
 			if {[info exists issue($field)]} {
-				$postdata string $field string $issue(field)
+				$postdata string $field string $issue($field)
 			}
 		}
 
@@ -155,6 +159,10 @@ namespace eval ::jira {
 				}
 				$postdata array_close
 			}
+		}
+
+		foreach field [array names issue -regexp {^customfield_\d*$}] {
+			$postdata string $field string $issue($field)
 		}
 		
 		$postdata map_close
