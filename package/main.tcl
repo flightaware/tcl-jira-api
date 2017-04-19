@@ -49,55 +49,6 @@ namespace eval ::jira {
 	}
 
 	#
-	# Parse a string of the format "-key val [etc]" into an array
-	# ie "-myKey myVal -foo bar" becomes:
-	#	argarray(myKey)	= myVal
-	#	argarray(foo)	= bar
-	#
-	proc parse_args {_args _argarray} {
-		upvar 1 $_args args
-		upvar 1 $_argarray argarray
-
-		unset -nocomplain argarray
-
-		foreach {key value} $args {
-			set argarray([string range $key 1 end]) $value
-		}
-
-		if {[info exists argarray(array)]} {
-			set datalist $argarray(array)
-			unset -nocomplain argarray
-			array set argarray $datalist
-		}
-
-		return
-	}
-
-	#
-	# Parse user JSON and generate basic BasicUser JSON.
-	#
-	proc parseBasicUser {key _result args} {
-		::jira::parse_args args argarray
-
-		upvar 1 $_result result
-		unset -nocomplain result
-
-		if {[info exists argarray(userDefinition)]} {
-			array set result $argarray(userDefinition)
-			return
-		}
-
-		::jira::getUser $key getUserResult
-
-		set keyMap [list self name displayName active]
-
-		foreach key $keyMap {
-			set result($key) $getUserResult($key)
-		}
-
-		return
-	}
-	#
 	# Parse issue array into JSON. Custom field processing only handle top level json key-values
 	# Example: [list project [list id 1337] labels [list 1223 1222] components [list id 5 id 10]]
 	#
@@ -169,6 +120,31 @@ namespace eval ::jira {
 		$postdata map_close
 		$postdata map_close
 		set result [$postdata get]
+
+		return
+	}
+
+	#
+	# Parse a string of the format "-key val [etc]" into an array
+	# ie "-myKey myVal -foo bar" becomes:
+	#	argarray(myKey)	= myVal
+	#	argarray(foo)	= bar
+	#
+	proc parse_args {_args _argarray} {
+		upvar 1 $_args args
+		upvar 1 $_argarray argarray
+
+		unset -nocomplain argarray
+
+		foreach {key value} $args {
+			set argarray([string range $key 1 end]) $value
+		}
+
+		if {[info exists argarray(array)]} {
+			set datalist $argarray(array)
+			unset -nocomplain argarray
+			array set argarray $datalist
+		}
 
 		return
 	}
@@ -733,6 +709,31 @@ namespace eval ::jira {
 			}
 		}
 		return $retbuf
+	}
+
+	#
+	# Parse user JSON and generate basic BasicUser JSON.
+	#
+	proc parseBasicUser {key _result args} {
+		::jira::parse_args args argarray
+
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		if {[info exists argarray(userDefinition)]} {
+			array set result $argarray(userDefinition)
+			return
+		}
+
+		::jira::getUser $key getUserResult
+
+		set keyMap [list self name displayName active]
+
+		foreach key $keyMap {
+			set result($key) $getUserResult($key)
+		}
+
+		return
 	}
 
 	#
