@@ -37,7 +37,7 @@ namespace eval ::jira {
 
 	#
 	# Set config values. Pass an arbitrary # of "-key val" arg pairs
-	# eg ::jira::config -username myuser -password correcthorsebatterystaple
+	# eg ::jira::config -username myuser -password correcthorsebatterystaple -server notmyjira.atlassian.net
 	#
 	proc config {args} {
 		::jira::parse_args args argarray
@@ -46,6 +46,82 @@ namespace eval ::jira {
 		array set ::jira::config [array get argarray]
 
 		return 1
+	}
+
+	#
+	# Parse issue array into JSON. Custom field processing only handle top level json key-values
+	# Example: [list project [list id 1337] labels [list 1223 1222] components [list id 5 id 10]]
+	#
+	proc issue_array_to_json {_issue _result args} {
+		::jira::parse_args args argarray
+
+		upvar 1 $_issue issue
+
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set postdata [::yajl create #auto]
+		$postdata map_open string fields map_open
+
+		set basicFields [list summary environment description duedate]
+		set listFields [list labels]
+		set mapFields [list project issuetype assignee reporter priority components]
+		set listMapFields [list components]
+		foreach field $basicFields {
+			if {[info exists issue($field)]} {
+				$postdata string $field string $issue($field)
+			}
+		}
+
+		foreach field $mapFields {
+			if {[info exists issue($field)]} {
+				if {[lsearch $listMapFields $field] > -1} {
+					$postdata string $field array_open
+				} else {
+					$postdata string $field map_open
+				}
+
+
+				foreach {key value} $issue($field) {
+					if {[lsearch $listMapFields $field] > -1} {
+						$postdata map_open
+					}
+
+					$postdata string $key string $value;
+					
+					if {[lsearch $listMapFields $field] > -1} {
+						$postdata map_close
+					}
+				}
+
+				if {[lsearch $listMapFields $field] > -1} {
+					$postdata array_close
+				} else {
+					$postdata map_close
+				}
+
+			}
+		}
+
+		foreach field $listFields {
+			if {[info exists issue($field)]} {
+				$postdata string $field array_open
+				foreach label $issue(labels) {
+					$postdata string $label
+				}
+				$postdata array_close
+			}
+		}
+
+		foreach field [array names issue -regexp {^customfield_\d*$}] {
+			$postdata string $field string $issue($field)
+		}
+		
+		$postdata map_close
+		$postdata map_close
+		set result [$postdata get]
+
+		return
 	}
 
 	#
@@ -125,33 +201,30 @@ namespace eval ::jira {
 	##############################################################################
 	
 	#
-	# Add a comment to the issue specified by number (eg JIRA-123). The body of
-	# the comment should be passed with args, eg -body "This is my comment". Any
-	# data returned by the request will be stored in _result
+	# Add a comment to the issue specified by key (eg JIRA-123), also works with
+	# id. The body of the comment should be passed with args, eg -body "This is my
+	# comment". Any data returned by the request will be stored in _result
 	#
-	proc addComment {number _result args} {
+	proc addComment {key _result args} {
 		::jira::parse_args args argarray
 		upvar 1 $_result result
 		unset -nocomplain result
 
-		set url "[::jira::baseurl]/rest/api/2/issue/$number/comment"
+		set url "[::jira::baseurl]/rest/api/2/issue/$key/comment"
+
+		if {[info exists argarray(author)]} {
+			::jira::parseBasicUser $argarray(userDefinition) author
+		} elseif {[info exists argarray(user)]} {
+			::jira::parseBasicUser $argarray(userName) author
+		} else {
+			::jira::parseBasicUser {} author
+		}
 
 		set postdata [::yajl create #auto]
 		$postdata map_open string body string $argarray(body)
-		# $postdata string visibility map_open string type string role string value string developers map_close
 
-		$postdata string author map_open
-		$postdata string self string "https://flightaware.atlassian.net/rest/api/2/user?username=sherron.racz%40flightaware.com"
-		$postdata string name string "sherron.racz@flightaware.com"
-		$postdata string displayName string "Sherron Racz"
-		$postdata string active bool true
-
-		#$postdata string self string "https://flightaware.atlassian.net/rest/api/2/user?username=nugget%40flightaware.com"
-		#$postdata string name string "nugget@flightaware.com"
-		#$postdata string displayName string "David McNett"
-		#$postdata string active bool true
-
-		$postdata map_close
+		$postdata string author 
+		::yajl::add_array_to_json $postdata author
 
 		$postdata map_close
 		set jsonpost [$postdata get]
@@ -210,6 +283,65 @@ namespace eval ::jira {
 		$postdata map_close
 
 		set jsonpost [$postdata get]
+		$postdata delete
+
+		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
+			puts "POST $jsonpost"
+		}
+
+		if {[::jira::raw $url POST json -body $jsonpost]} {
+			array set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	}
+
+	#
+	# Create bulk issues. Issues should be a string list of arrays
+	# ingestible by issue_array_to_json.
+	#
+	# Example: description {There is no cow level} projectID 11003 components \
+	# {id 11034} summary {AOE II} issuetype {id 10003} project {id 11003} \
+	# customfield_10004 {} labels {Zerg Terran Wintoss} issueType 10003
+	#
+	# Required in each issue:
+	#	project   : The key of the project this issue goes in, eg "JIRA:"
+	#	issuetype : The ID of the issueType to be assigned. See getIssueTypes
+	#
+	# Any data returned by the request will be stored in _result
+	#
+	# https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-createIssues
+	#
+	proc addIssues {_issueList _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_issueList issueList
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		set url "[::jira::baseurl]/rest/api/2/issue/bulk"
+
+		set postdata [::yajl create #auto]
+
+		set issuesJSON [list]
+		foreach issue $issueList {
+			array unset issueArr
+			array set issueArr $issue
+			issue_array_to_json issueArr json
+			lappend issuesJSON "$json"
+		}
+
+		$postdata map_open
+		$postdata string issueUpdates array_open
+		set jsonpost [$postdata get]
+
+		append jsonpost [join $issuesJSON ","]
+
+		$postdata clear
+		$postdata array_close
+		$postdata map_close
+		append jsonpost [$postdata get]
+
 		$postdata delete
 
 		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
@@ -323,7 +455,32 @@ namespace eval ::jira {
 			return 0
 		}
 	}
-	
+
+	#
+	# Given a username (eg "fred"), get user data and store in _result
+	#
+	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/user-getUser
+	#
+	proc getUser {key _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		if {$key == ""} {
+			set url "[::jira::baseurl]/rest/api/2/myself"
+		} else {
+			set url "[::jira::baseurl]/rest/api/2/user?username=$key"			
+		}
+
+
+		if {[::jira::raw $url GET json]} {
+			array set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	}
+
 	#
 	# Given an issue identifier (eg "JIRA-123"), get issue data and store in _result
 	# Optionally append -getcomments 1 to return comments with issue data.
@@ -552,6 +709,31 @@ namespace eval ::jira {
 			}
 		}
 		return $retbuf
+	}
+
+	#
+	# Parse user JSON and generate basic BasicUser JSON.
+	#
+	proc parseBasicUser {key _result args} {
+		::jira::parse_args args argarray
+
+		upvar 1 $_result result
+		unset -nocomplain result
+
+		if {[info exists argarray(userDefinition)]} {
+			array set result $argarray(userDefinition)
+			return
+		}
+
+		::jira::getUser $key getUserResult
+
+		set keyMap [list self name displayName active]
+
+		foreach key $keyMap {
+			set result($key) $getUserResult($key)
+		}
+
+		return
 	}
 
 	#
