@@ -219,7 +219,7 @@ namespace eval ::jira {
 		} else {
 			::jira::parseBasicUser {} author
 		}
-
+		
 		set postdata [::yajl create #auto]
 		$postdata map_open string body string $argarray(body)
 
@@ -265,25 +265,20 @@ namespace eval ::jira {
 		unset -nocomplain result
 
 		set url "[::jira::baseurl]/rest/api/2/issue"
-
-		set postdata [::yajl create #auto]
-
-		$postdata map_open
-		$postdata string fields map_open
-
-		$postdata string project map_open string id string $issue(projectID) map_close
-		foreach item {summary description} {
-			if {[info exists issue($item)] && $issue($item) ne ""} {
-				$postdata string $item string $issue($item)
-			}
+		
+		# massage the projectID and issueType fields
+		# this is kinda crude but let us retain backwards compatibility
+		if {[info exists issue(projectID)]} {
+			set issue(project) [list id $issue(projectID)]
+			unset issue(projectID)
 		}
-		$postdata string issuetype map_open string id string $issue(issueType) map_close
-
-		$postdata map_close
-		$postdata map_close
-
-		set jsonpost [$postdata get]
-		$postdata delete
+		
+		if {[info exists issue(issueType)]} {
+			set issue(issuetype) [list id $issue(issueType)]
+			unset issue(issueType)
+		}
+		
+		::jira::issue_array_to_json issue jsonpost
 
 		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
 			puts "POST $jsonpost"
