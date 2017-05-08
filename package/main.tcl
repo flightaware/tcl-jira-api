@@ -223,8 +223,9 @@ namespace eval ::jira {
 		set postdata [::yajl create #auto]
 		$postdata map_open string body string $argarray(body)
 
-		$postdata string author 
-		::yajl::add_array_to_json $postdata author
+		$postdata map_key author map_open
+			$postdata map_key name string $author(name)
+		$postdata map_close
 
 		$postdata map_close
 		set jsonpost [$postdata get]
