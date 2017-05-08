@@ -475,6 +475,43 @@ namespace eval ::jira {
 			return 0
 		}
 	}
+	
+	#
+	# Given an email address, try to find a user with that address. This proc only
+	# returns true if one and only one user is found. In that case, the user data
+	# will be stored in _result
+	#
+	proc getUserByEmail {email _result args} {
+		::jira::parse_args args argarray
+		upvar 1 $_result result
+		unset -nocomplain result
+		
+		set url "[::jira::baseurl]/rest/api/2/user/search?username=$email"
+		
+		if {[::jira::raw $url GET json]} {
+			set rawdata [::yajl::json2dict $json(data)]
+			if {[llength $rawdata] == 0} {
+				# Provide useful debug if enabled
+				if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
+					puts "getUserByEmail: query found no matching users"
+				}
+				
+				return 0
+			} elseif {[llength $rawdata] > 1} {
+				# Provide useful debug if enabled
+				if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
+					puts "getUserByEmail: query found [llength $rawdata] matching users, result is ambiguous"
+				}
+				
+				return 0
+			} else {
+				array set result [lindex $rawdata 0]
+				return 1
+			}
+		} else {
+			return 0
+		}
+	}
 
 	#
 	# Given an issue identifier (eg "JIRA-123"), get issue data and store in _result
