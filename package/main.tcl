@@ -406,6 +406,47 @@ namespace eval ::jira {
 	}
 	
 	#
+	# Given an issue identifier (eg ("JIRA-123") and a username, assign the issue
+	# to the user. To unassign an issue, pass the username as an empty string.
+	# Returns 0 or 1 indicating whether the assignment was successful, and any
+	# data returned from the API endpoint is stored in _result.
+	#
+	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-assign
+	#
+	proc assignIssue {issueID username _result} {
+		upvar 1 $_result result
+		unset -nocomplain result
+		
+		set url "[::jira::baseurl]/rest/api/2/issue/${issueID}/assignee"
+		
+		set postdata [::yajl create #auto]
+		
+		$postdata map_open
+		
+		if {$username eq ""} {
+			$postdata map_key name null		
+		} else {
+			$postdata map_key name string $username			
+		}
+		
+		$postdata map_close
+		
+		set jsonpost [$postdata get]
+		$postdata delete
+		
+		if {([info exists ::jira::config(debug)] && [string is true -strict $::jira::config(debug)]) || [info exists argarray(debug)]} {
+			puts "PUT $jsonpost"
+		}
+
+		if {[::jira::raw $url PUT json -body $jsonpost]} {
+			array set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	}
+	
+	#
 	# Given an issue identifier (eg "JIRA-123"), perform the specified transition
 	# on the issue. The transition can be specified either by ID or name. Any data
 	# returned from the API endpoint is stored in _result.
