@@ -224,7 +224,7 @@ namespace eval ::jira {
 		$postdata map_open string body string $argarray(body)
 
 		$postdata map_key author map_open
-			$postdata map_key name string $author(name)
+			$postdata map_key name string $author(displayName)
 		$postdata map_close
 
 		$postdata map_close
@@ -801,7 +801,7 @@ namespace eval ::jira {
 
 		::jira::getUser $key getUserResult
 
-		set keyMap [list self name displayName active]
+		set keyMap [list self displayName active]
 
 		foreach key $keyMap {
 			set result($key) $getUserResult($key)
