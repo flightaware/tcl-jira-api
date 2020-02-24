@@ -406,14 +406,14 @@ namespace eval ::jira {
 	}
 	
 	#
-	# Given an issue identifier (eg ("JIRA-123") and a username, assign the issue
-	# to the user. To unassign an issue, pass the username as an empty string.
+	# Given an issue identifier (eg ("JIRA-123") and a JIRA account ID, assign the issue
+	# to the user. To unassign an issue, pass the account ID as an empty string.
 	# Returns 0 or 1 indicating whether the assignment was successful, and any
 	# data returned from the API endpoint is stored in _result.
 	#
 	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-assign
 	#
-	proc assignIssue {issueID username _result} {
+	proc assignIssue {issueID accountId _result} {
 		upvar 1 $_result result
 		unset -nocomplain result
 		
@@ -423,10 +423,10 @@ namespace eval ::jira {
 		
 		$postdata map_open
 		
-		if {$username eq ""} {
-			$postdata map_key name null		
+		if {$accountId eq ""} {
+			$postdata map_key accountId null		
 		} else {
-			$postdata map_key name string $username			
+			$postdata map_key accountId string $accountId			
 		}
 		
 		$postdata map_close
