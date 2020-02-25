@@ -492,31 +492,6 @@ namespace eval ::jira {
 			return 0
 		}
 	}
-
-	#
-	# Given a username (eg "fred"), get user data and store in _result
-	#
-	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/user-getUser
-	#
-	proc getUser {key _result args} {
-		::jira::parse_args args argarray
-		upvar 1 $_result result
-		unset -nocomplain result
-
-		if {$key == ""} {
-			set url "[::jira::baseurl]/rest/api/2/myself"
-		} else {
-			set url "[::jira::baseurl]/rest/api/2/user?username=$key"			
-		}
-
-
-		if {[::jira::raw $url GET json]} {
-			array set result [::yajl::json2dict $json(data)]
-			return 1
-		} else {
-			return 0
-		}
-	}
 	
 	#
 	# Given an email address, try to find a user with that address. This proc only
@@ -799,7 +774,7 @@ namespace eval ::jira {
 			return
 		}
 
-		::jira::getUser $key getUserResult
+		::jira::getUserByEmail $key getUserResult
 
 		set keyMap [list self displayName active]
 
