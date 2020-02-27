@@ -494,6 +494,22 @@ namespace eval ::jira {
 	}
 	
 	#
+	# Get info on the currenty-logged-in user. User data will be stored in _result.
+	#
+	proc getCurrentUser {_result} {
+		upvar 1 $_result result
+		unset -nocomplain result
+		
+		set url "[::jira::baseurl]/rest/api/2/myself"
+		if {[::jira::raw $url GET json]} {
+			array set result [::yajl::json2dict $json(data)]
+			return 1
+		} else {
+			return 0
+		}
+	}
+	
+	#
 	# Given an email address, try to find a user with that address. This proc only
 	# returns true if one and only one user is found. In that case, the user data
 	# will be stored in _result
@@ -763,7 +779,7 @@ namespace eval ::jira {
 	#
 	# Parse user JSON and generate basic BasicUser JSON.
 	#
-	proc parseBasicUser {key _result args} {
+	proc parseBasicUser {email _result args} {
 		::jira::parse_args args argarray
 
 		upvar 1 $_result result
@@ -773,8 +789,12 @@ namespace eval ::jira {
 			array set result $argarray(userDefinition)
 			return
 		}
-
-		::jira::getUserByEmail $key getUserResult
+		
+		if {$email eq ""} {
+			::jira::getCurrentUser getUserResult
+		} else {
+			::jira::getUserByEmail $email getUserResult
+		}
 
 		set keyMap [list self displayName active]
 
