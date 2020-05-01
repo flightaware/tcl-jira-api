@@ -519,7 +519,7 @@ namespace eval ::jira {
 		upvar 1 $_result result
 		unset -nocomplain result
 		
-		set url "[::jira::baseurl]/rest/api/2/user/search?username=$email"
+		set url "[::jira::baseurl]/rest/api/2/user/search?query=$email"
 		
 		if {[::jira::raw $url GET json]} {
 			set rawdata [::yajl::json2dict $json(data)]
