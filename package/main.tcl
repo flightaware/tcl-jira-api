@@ -224,7 +224,7 @@ namespace eval ::jira {
 		$postdata map_open string body string $argarray(body)
 
 		$postdata map_key author map_open
-			$postdata map_key name string $author(name)
+			$postdata map_key name string $author(displayName)
 		$postdata map_close
 
 		$postdata map_close
@@ -414,14 +414,14 @@ namespace eval ::jira {
 	}
 	
 	#
-	# Given an issue identifier (eg ("JIRA-123") and a username, assign the issue
-	# to the user. To unassign an issue, pass the username as an empty string.
+	# Given an issue identifier (eg ("JIRA-123") and a JIRA account ID, assign the issue
+	# to the user. To unassign an issue, pass the account ID as an empty string.
 	# Returns 0 or 1 indicating whether the assignment was successful, and any
 	# data returned from the API endpoint is stored in _result.
 	#
 	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/issue-assign
 	#
-	proc assignIssue {issueID username _result} {
+	proc assignIssue {issueID accountId _result} {
 		upvar 1 $_result result
 		unset -nocomplain result
 		
@@ -431,10 +431,10 @@ namespace eval ::jira {
 		
 		$postdata map_open
 		
-		if {$username eq ""} {
-			$postdata map_key name null		
+		if {$accountId eq ""} {
+			$postdata map_key accountId null		
 		} else {
-			$postdata map_key name string $username			
+			$postdata map_key accountId string $accountId			
 		}
 		
 		$postdata map_close
@@ -503,24 +503,15 @@ namespace eval ::jira {
 			return 0
 		}
 	}
-
+	
 	#
-	# Given a username (eg "fred"), get user data and store in _result
+	# Get info on the currenty-logged-in user. User data will be stored in _result.
 	#
-	# See https://docs.atlassian.com/jira/REST/cloud/#api/2/user-getUser
-	#
-	proc getUser {key _result args} {
-		::jira::parse_args args argarray
+	proc getCurrentUser {_result} {
 		upvar 1 $_result result
 		unset -nocomplain result
-
-		if {$key == ""} {
-			set url "[::jira::baseurl]/rest/api/2/myself"
-		} else {
-			set url "[::jira::baseurl]/rest/api/2/user?username=$key"			
-		}
-
-
+		
+		set url "[::jira::baseurl]/rest/api/2/myself"
 		if {[::jira::raw $url GET json]} {
 			array set result [::yajl::json2dict $json(data)]
 			return 1
@@ -541,7 +532,7 @@ namespace eval ::jira {
 		upvar 1 $_result result
 		unset -nocomplain result
 		
-		set url "[::jira::baseurl]/rest/api/2/user/search?username=$email"
+		set url "[::jira::baseurl]/rest/api/2/user/search?query=$email"
 		
 		if {[::jira::raw $url GET json]} {
 			set rawdata [::yajl::json2dict $json(data)]
@@ -806,7 +797,7 @@ namespace eval ::jira {
 	#
 	# Parse user JSON and generate basic BasicUser JSON.
 	#
-	proc parseBasicUser {key _result args} {
+	proc parseBasicUser {email _result args} {
 		::jira::parse_args args argarray
 
 		upvar 1 $_result result
@@ -816,10 +807,14 @@ namespace eval ::jira {
 			array set result $argarray(userDefinition)
 			return
 		}
+		
+		if {$email eq ""} {
+			::jira::getCurrentUser getUserResult
+		} else {
+			::jira::getUserByEmail $email getUserResult
+		}
 
-		::jira::getUser $key getUserResult
-
-		set keyMap [list self name displayName active]
+		set keyMap [list self displayName active]
 
 		foreach key $keyMap {
 			set result($key) $getUserResult($key)
