@@ -292,7 +292,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -353,7 +353,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -408,7 +408,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -451,7 +451,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -496,7 +496,7 @@ namespace eval ::jira {
 				return 1
 			} else {
 				# pass the json response in the result array to improve error handling
-	                        array set result [array get json]
+				array set result [array get json]
 				return 0
 			}
 		} else {
@@ -517,7 +517,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -582,7 +582,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -619,7 +619,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 
@@ -661,7 +661,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -683,7 +683,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -701,7 +701,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	
@@ -743,7 +743,7 @@ namespace eval ::jira {
 			return 1
 		} else {
 			# pass the json response in the result array to improve error handling
-                        array set result [array get json]
+			array set result [array get json]
 			return 0
 		}
 	}
