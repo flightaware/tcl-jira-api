@@ -240,6 +240,8 @@ namespace eval ::jira {
 			# parray result
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 
@@ -289,6 +291,8 @@ namespace eval ::jira {
 			array set result [::yajl::json2dict $json(data)]
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -348,6 +352,8 @@ namespace eval ::jira {
 			array set result [::yajl::json2dict $json(data)]
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -401,6 +407,8 @@ namespace eval ::jira {
 			array set result [::yajl::json2dict $json(data)]
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -442,6 +450,8 @@ namespace eval ::jira {
 			array set result [::yajl::json2dict $json(data)]
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -483,9 +493,10 @@ namespace eval ::jira {
 
 			if {[::jira::raw $url POST json -body $jsonpost]} {
 				array set result [::yajl::json2dict $json(data)]
-				# parray result
 				return 1
 			} else {
+				# pass the json response in the result array to improve error handling
+				array set result [array get json]
 				return 0
 			}
 		} else {
@@ -505,6 +516,8 @@ namespace eval ::jira {
 			array set result [::yajl::json2dict $json(data)]
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -542,6 +555,7 @@ namespace eval ::jira {
 				return 1
 			}
 		} else {
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -565,9 +579,10 @@ namespace eval ::jira {
 
 		if {[::jira::raw $url GET json]} {
 			array set result [::yajl::json2dict $json(data)]
-			# parray result
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -593,7 +608,6 @@ namespace eval ::jira {
 				unset -nocomplain project
 				array set project $p
 				if {![info exists argarray(key)] || $argarray(key) eq $project(key)} {
-					# parray project
 					foreach i $project(issuetypes) {
 						unset -nocomplain it
 						array set it $i
@@ -602,9 +616,10 @@ namespace eval ::jira {
 				}
 			}
 
-			# parray result
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 
@@ -622,8 +637,6 @@ namespace eval ::jira {
 			foreach el [::yajl::json2dict $json(data)] {
 				unset -nocomplain item
 				array set item $el
-				#parray item
-				#puts "-- "
 				if {[string tolower $name] eq [string tolower $item($field)]} {
 					return $item(id)
 				}
@@ -645,9 +658,10 @@ namespace eval ::jira {
 
 		if {[::jira::raw $url GET json]} {
 			array set result [::yajl::json2dict $json(data)]
-			# parray result
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -666,9 +680,10 @@ namespace eval ::jira {
 
 		if {[::jira::raw $url GET json]} {
 			array set result [::yajl::json2dict $json(data)]
-			# parray result
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
@@ -682,9 +697,11 @@ namespace eval ::jira {
 		
 		set url "[::jira::baseurl]/rest/api/2/project/${projectID}/versions"
 		if {[::jira::raw $url GET json]} {
-			set result [::yajl::json2dict $json(data)]
+			array set result [::yajl::json2dict $json(data)]
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	
@@ -723,9 +740,10 @@ namespace eval ::jira {
 		
 		if {[::jira::raw $url PUT json -body $jsonpost]} {
 			array set result [::yajl::json2dict $json(data)]
-			# parray result
 			return 1
 		} else {
+			# pass the json response in the result array to improve error handling
+			array set result [array get json]
 			return 0
 		}
 	}
