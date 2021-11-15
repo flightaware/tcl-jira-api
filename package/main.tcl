@@ -865,4 +865,4 @@ namespace eval ::jira {
 	##############################################################################
 }
 
-package provide jira 1.0
+package provide jira 1.0.0
