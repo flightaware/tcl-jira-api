@@ -4,7 +4,7 @@ package require yajltcl
 package require base64
 
 ::tls::init -ssl2 0 -ssl3 0 -tls1 1
-::http::register https 443 ::tls::socket
+::http::register https 443 [list ::tls::socket -autoservername 1]
 
 namespace eval ::jira {
 	variable config
